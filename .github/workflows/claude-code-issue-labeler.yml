@@ -1,0 +1,98 @@
+name: Issue Auto-Labeler and Diagnostics
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  label-and-diagnose:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Ensure labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "bug"              --color "d73a4a" --description "Something isn't working"       --force
+          gh label create "enhancement"      --color "a2eeef" --description "New feature or request"        --force
+          gh label create "performance"      --color "e4e669" --description "Speed or efficiency issue"     --force
+          gh label create "gameplay"         --color "0075ca" --description "Core game mechanics"           --force
+          gh label create "ui/ux"            --color "e99695" --description "Visual or interaction design"  --force
+          gh label create "documentation"    --color "0075ca" --description "Improvements to docs"          --force
+          gh label create "question"         --color "d876e3" --description "Further information requested" --force
+          gh label create "good first issue" --color "7057ff" --description "Good for newcomers"            --force
+
+      - name: Run Claude issue triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_tools: "Bash(gh issue edit *),Bash(gh issue comment *)"
+          prompt: |
+            You are an automated issue triage assistant for a Tetris game repository.
+            The codebase consists of three files:
+            - index.html — DOM structure (two canvas elements: #board 300×600px and #next-canvas 120×120px, a stats panel, and an overlay div)
+            - style.css — Dark retro theme
+            - game.js — All game logic (~305 lines, no build step, no dependencies)
+
+            Key game.js internals:
+            - Global state: board (20×10 matrix), current piece {shape,x,y,type}, next piece, score, lines, level, paused, gameOver, dropInterval, dropAccum, animId
+            - Game loop: init() → spawn() → requestAnimationFrame(loop)
+            - Piece locking: merge() → clearLines() → spawn(); if spawn collides, endGame() fires
+            - Rotation: rotateCW() with wall-kick at ±1 and ±2 columns via tryRotate()
+            - Scoring: LINE_SCORES[n] × level; hard drop +2pts/row; soft drop +1pt/row
+            - Speed: dropInterval starts at 1000ms, decreases 90ms per level, floors at 100ms
+
+            Issue number: ${{ github.event.issue.number }}
+            Issue title: ${{ github.event.issue.title }}
+            Issue body:
+            ${{ github.event.issue.body }}
+
+            Your tasks:
+
+            TASK 1 — Apply labels.
+            Analyze the issue title and body above. Choose ALL applicable labels from this exact list:
+            bug, enhancement, performance, gameplay, ui/ux, documentation, question, good first issue
+
+            Rules for label selection:
+            - "bug": something is broken or behaving incorrectly
+            - "enhancement": a request for new functionality
+            - "performance": mentions lag, frame rate, speed, stuttering, or optimization
+            - "gameplay": relates to pieces, rotation, scoring, levels, line clears, collisions, controls
+            - "ui/ux": relates to visuals, colors, layout, canvas rendering, overlay, next-piece preview
+            - "documentation": asks about or requests changes to docs or comments
+            - "question": phrased as a question or asks how something works
+            - "good first issue": a well-scoped, small change that a new contributor could handle
+
+            Apply each chosen label by running:
+            gh issue edit ${{ github.event.issue.number }} --add-label "<label>"
+
+            Run one command per label.
+
+            TASK 2 — Post a diagnostic comment.
+            Post a single comment using:
+            gh issue comment ${{ github.event.issue.number }} --body "<your comment>"
+
+            The comment must follow this exact structure (use GitHub Markdown):
+
+            ## Diagnostic Analysis
+
+            **Problem summary:** One or two sentences explaining what the issue is about in plain language.
+
+            **Relevant area of the codebase:**
+            Point to the specific function(s), line range(s), or variable(s) in game.js (or index.html / style.css) most likely involved. Be specific — name the function and explain why it is relevant.
+
+            **Suggested implementation steps:**
+            A numbered list of concrete steps a developer should take to investigate or fix this issue. Reference specific functions, variable names, or DOM element IDs from the codebase. Keep steps actionable and ordered.
+
+            **Estimated difficulty:** Easy / Medium / Hard — and one sentence justifying the rating.
+
+            Do not ask for clarification. Do not skip either task. Complete both tasks unconditionally.
