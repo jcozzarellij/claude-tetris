@@ -169,7 +169,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = document.body.classList.contains('light-mode') ? '#c8c8d8' : '#22222e';
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -300,5 +300,9 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+document.getElementById('theme-switch').addEventListener('change', function () {
+  document.body.classList.toggle('light-mode', this.checked);
+});
 
 init();

@@ -164,3 +164,118 @@ kbd {
 #restart-btn:hover {
   background: #9bbdff;
 }
+
+/* ---- Theme toggle switch ---- */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: #555570;
+  border-radius: 24px;
+  transition: background 0.3s;
+}
+
+.slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: #e0e0e0;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.switch input:checked + .slider {
+  background: #7aa2f7;
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(20px);
+}
+
+/* ---- Light mode ---- */
+body.light-mode {
+  background: #f0f0f5;
+  color: #1a1a2e;
+}
+
+body.light-mode .game-title {
+  color: #4a6fd4;
+  text-shadow: 0 0 20px rgba(74, 111, 212, 0.3);
+}
+
+body.light-mode #board {
+  border-color: #c0c0d0;
+  background: #e8e8f0;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
+}
+
+body.light-mode #next-canvas {
+  border-color: #c0c0d0;
+  background: #e8e8f0;
+}
+
+body.light-mode .label {
+  color: #888899;
+}
+
+body.light-mode .value {
+  color: #4a6fd4;
+}
+
+body.light-mode kbd {
+  background: #d8d8e8;
+  border-color: #b0b0c8;
+  color: #444;
+}
+
+body.light-mode .controls li {
+  color: #555;
+}
+
+body.light-mode .overlay {
+  background: rgba(200, 200, 220, 0.75);
+}
+
+body.light-mode #overlay-title {
+  color: #c0392b;
+}
+
+body.light-mode #overlay-score {
+  color: #4a6fd4;
+}
+
+body.light-mode #restart-btn {
+  background: #4a6fd4;
+  color: #f0f0f5;
+}
+
+body.light-mode #restart-btn:hover {
+  background: #6a8ff4;
+}
