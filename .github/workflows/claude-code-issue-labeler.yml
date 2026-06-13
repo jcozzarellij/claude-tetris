@@ -1,4 +1,4 @@
-name: Issue Auto-Labeler and Diagnostics
+name: Claude Issue Auto-Labeler and Diagnostics
 
 on:
   issues:
