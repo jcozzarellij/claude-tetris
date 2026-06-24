@@ -28,6 +28,18 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+// Nivel con el que arrancará la próxima partida (1–15). Se puede cambiar
+// desde el menú de pausa; no se altera mid-game.
+let startLevel = 1;
+
+// Color de la cuadrícula; se actualiza al cambiar el tema visual.
+let gridColor = '#22222e';
+
+/** Calcula el intervalo de caída (ms) para el nivel dado. */
+function speedForLevel(n) {
+  return Math.max(100, 1000 - (n - 1) * 90);
+}
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -36,11 +48,53 @@ const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
 const overlay = document.getElementById('overlay');
-const overlayTitle = document.getElementById('overlay-title');
-const overlayScore = document.getElementById('overlay-score');
-const restartBtn = document.getElementById('restart-btn');
+
+// Sub-vistas del overlay
+const viewGameover  = document.getElementById('view-gameover');
+const viewPause     = document.getElementById('view-pause');
+const viewControls  = document.getElementById('view-controls');
+
+// Elementos de game over
+const overlayTitle  = document.getElementById('overlay-title');
+const overlayScore  = document.getElementById('overlay-score');
+const restartBtn    = document.getElementById('restart-btn');
+
+// Elementos del menú de pausa
+const btnResume     = document.getElementById('btn-resume');
+const btnRestart    = document.getElementById('btn-restart');
+const btnControls   = document.getElementById('btn-controls');
+const startLevelDisplay = document.getElementById('start-level-display');
+const btnLevelDec   = document.getElementById('btn-level-dec');
+const btnLevelInc   = document.getElementById('btn-level-inc');
+
+// Sub-vista controles
+const btnControlsBack = document.getElementById('btn-controls-back');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+
+// ── Utilidades de overlay ────────────────────────────────────────────────────
+
+/** Oculta todas las sub-vistas y el propio overlay. */
+function hideOverlay() {
+  overlay.querySelectorAll('.overlay-view').forEach(v => v.classList.add('hidden'));
+  overlay.classList.add('hidden');
+}
+
+/** Muestra el overlay con la sub-vista indicada. */
+function showView(view) {
+  overlay.querySelectorAll('.overlay-view').forEach(v => v.classList.add('hidden'));
+  overlay.classList.remove('hidden');
+  view.classList.remove('hidden');
+}
+
+/** Actualiza el display del nivel inicial en el menú de pausa. */
+function updateStartLevelDisplay() {
+  startLevelDisplay.textContent = startLevel;
+  btnLevelDec.disabled = startLevel <= 1;
+  btnLevelInc.disabled = startLevel >= 15;
+}
+
+// ── Lógica de tablero ────────────────────────────────────────────────────────
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -107,7 +161,7 @@ function clearLines() {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    dropInterval = speedForLevel(level);
     updateHUD();
   }
 }
@@ -157,6 +211,8 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
+// ── Dibujo ───────────────────────────────────────────────────────────────────
+
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
   const color = COLORS[colorIndex];
@@ -170,7 +226,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = document.body.classList.contains('light-mode') ? '#c8c8d8' : '#22222e';
+  ctx.strokeStyle = gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -219,25 +275,44 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
+// ── Estados del juego ────────────────────────────────────────────────────────
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
-  overlay.classList.remove('hidden');
+  showView(viewGameover);
 }
 
+/** Pausa el juego y muestra el menú de pausa completo. */
+function pause() {
+  if (gameOver || paused) return;
+  paused = true;
+  cancelAnimationFrame(animId);
+  updateStartLevelDisplay();
+  showView(viewPause);
+}
+
+/** Reanuda el juego desde el menú de pausa. Reinicia lastTime para evitar
+ *  que el tiempo acumulado durante la pausa cause un salto de pieza. */
+function resume() {
+  if (!paused || gameOver) return;
+  paused = false;
+  hideOverlay();
+  // Restablece el tiempo para que no acumule el delta de la pausa
+  lastTime = performance.now();
+  dropAccum = 0;
+  animId = requestAnimationFrame(loop);
+}
+
+/** Alternador de pausa: se activa con P o Escape. */
 function togglePause() {
   if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
+  if (paused) {
+    resume();
   } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    pause();
   }
 }
 
@@ -257,26 +332,42 @@ function loop(ts) {
   if (!gameOver) animId = requestAnimationFrame(loop);
 }
 
+/** Inicia o reinicia una partida completa, respetando startLevel. */
 function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  // Arranca en el nivel elegido por el jugador
+  level = startLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  // Intervalo de caída según el nivel inicial
+  dropInterval = speedForLevel(startLevel);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
-  overlay.classList.add('hidden');
+  hideOverlay();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
+// ── Eventos de teclado ───────────────────────────────────────────────────────
+
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  // P / Escape alternan la pausa
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    e.preventDefault(); // evita comportamientos nativos (p.ej. salir de fullscreen)
+    // Si estamos en la sub-vista de controles, volver al menú de pausa
+    if (paused && !viewControls.classList.contains('hidden')) {
+      showView(viewPause);
+      return;
+    }
+    togglePause();
+    return;
+  }
+  // Mientras el juego esté pausado o terminado, bloquear inputs de movimiento
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -300,10 +391,51 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
+// ── Eventos de botones del overlay ──────────────────────────────────────────
+
+// Game over → reiniciar
 restartBtn.addEventListener('click', init);
+
+// Menú de pausa → Reanudar
+btnResume.addEventListener('click', resume);
+
+// Menú de pausa → Reiniciar (nueva partida)
+btnRestart.addEventListener('click', init);
+
+// Menú de pausa → Ver controles
+btnControls.addEventListener('click', () => {
+  showView(viewControls);
+});
+
+// Sub-vista controles → Volver al menú de pausa
+btnControlsBack.addEventListener('click', () => {
+  showView(viewPause);
+});
+
+// Selector de nivel inicial: decrementar
+btnLevelDec.addEventListener('click', () => {
+  if (startLevel > 1) {
+    startLevel--;
+    updateStartLevelDisplay();
+  }
+});
+
+// Selector de nivel inicial: incrementar
+btnLevelInc.addEventListener('click', () => {
+  if (startLevel < 15) {
+    startLevel++;
+    updateStartLevelDisplay();
+  }
+});
+
+// ── Tema visual ──────────────────────────────────────────────────────────────
 
 document.getElementById('theme-switch').addEventListener('change', function () {
   document.body.classList.toggle('light-mode', this.checked);
+  // Actualiza el color de cuadrícula cacheado para el tema activo
+  gridColor = this.checked ? '#c8c8d8' : '#22222e';
 });
+
+// ── Arranque ─────────────────────────────────────────────────────────────────
 
 init();

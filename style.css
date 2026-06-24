@@ -126,19 +126,37 @@ kbd {
   display: none;
 }
 
-.overlay-box {
-  text-align: center;
+.overlay-view {
   display: flex;
   flex-direction: column;
   gap: 12px;
   align-items: center;
 }
 
-#overlay-title {
+.overlay-view.hidden {
+  display: none;
+}
+
+.overlay-box {
+  text-align: center;
+  min-width: 200px;
+}
+
+/* Título de game over (rojo) */
+.overlay-title-gameover {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 4px;
   color: #e57373;
+}
+
+/* Título de pausa/controles (azul accent) */
+.overlay-title-pause {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #7aa2f7;
+  margin-bottom: 4px;
 }
 
 #overlay-score {
@@ -147,22 +165,123 @@ kbd {
   color: #7aa2f7;
 }
 
-#restart-btn {
-  margin-top: 8px;
-  background: #7aa2f7;
-  color: #0f0f17;
-  border: none;
+/* ---- Botones del menú ---- */
+.menu-btn {
+  width: 180px;
+  background: #22223a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a5a;
   border-radius: 6px;
-  padding: 10px 28px;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  letter-spacing: 1px;
-  transition: background 0.15s;
+  letter-spacing: 0.5px;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-#restart-btn:hover {
+.menu-btn:hover {
+  background: #2a2a4a;
+  border-color: #7aa2f7;
+}
+
+.menu-btn-primary {
+  background: #7aa2f7;
+  color: #0f0f17;
+  border-color: #7aa2f7;
+}
+
+.menu-btn-primary:hover {
   background: #9bbdff;
+  border-color: #9bbdff;
+}
+
+/* Botón desactivado (flechas de nivel en los extremos) */
+.menu-btn:disabled,
+.level-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Mantiene compatibilidad con el botón legacy #restart-btn */
+#restart-btn {
+  margin-top: 4px;
+}
+
+/* ---- Selector de nivel inicial ---- */
+.level-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #2a2a4a;
+  width: 180px;
+}
+
+.level-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #555570;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.level-control {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.level-display {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 26px;
+  font-weight: 700;
+  color: #7aa2f7;
+  min-width: 32px;
+  text-align: center;
+}
+
+.level-arrow {
+  background: #22223a;
+  color: #7aa2f7;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  line-height: 1;
+}
+
+.level-arrow:hover:not(:disabled) {
+  background: #2a2a4a;
+  border-color: #7aa2f7;
+}
+
+.level-hint {
+  font-size: 10px;
+  color: #555570;
+  letter-spacing: 0.5px;
+}
+
+/* ---- Lista de controles en overlay ---- */
+.controls-list-overlay {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  margin: 4px 0 8px;
+}
+
+.controls-list-overlay li {
+  font-size: 12px;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ---- Theme toggle switch ---- */
@@ -263,19 +382,59 @@ body.light-mode .overlay {
   background: rgba(200, 200, 220, 0.75);
 }
 
-body.light-mode #overlay-title {
+body.light-mode .overlay-title-gameover {
   color: #c0392b;
+}
+
+body.light-mode .overlay-title-pause {
+  color: #4a6fd4;
 }
 
 body.light-mode #overlay-score {
   color: #4a6fd4;
 }
 
-body.light-mode #restart-btn {
-  background: #4a6fd4;
-  color: #f0f0f5;
+body.light-mode .menu-btn {
+  background: #d8d8ec;
+  color: #1a1a2e;
+  border-color: #b0b0c8;
 }
 
-body.light-mode #restart-btn:hover {
+body.light-mode .menu-btn:hover {
+  background: #c8c8e0;
+  border-color: #4a6fd4;
+}
+
+body.light-mode .menu-btn-primary {
+  background: #4a6fd4;
+  color: #f0f0f5;
+  border-color: #4a6fd4;
+}
+
+body.light-mode .menu-btn-primary:hover {
   background: #6a8ff4;
+  border-color: #6a8ff4;
+}
+
+body.light-mode .level-display {
+  color: #4a6fd4;
+}
+
+body.light-mode .level-arrow {
+  background: #d8d8ec;
+  color: #4a6fd4;
+  border-color: #b0b0c8;
+}
+
+body.light-mode .level-arrow:hover:not(:disabled) {
+  background: #c8c8e0;
+  border-color: #4a6fd4;
+}
+
+body.light-mode .level-selector {
+  border-top-color: #c0c0d8;
+}
+
+body.light-mode .controls-list-overlay li {
+  color: #444;
 }

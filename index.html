@@ -48,18 +48,54 @@
             <li><kbd>↑</kbd> rotar</li>
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd> / <kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
     </div>
 
+    <!-- Overlay unificado: pausa y game over -->
     <div id="overlay" class="overlay hidden">
-      <div class="overlay-box">
-        <p id="overlay-title">GAME OVER</p>
+
+      <!-- Vista: GAME OVER -->
+      <div id="view-gameover" class="overlay-box overlay-view hidden">
+        <p id="overlay-title" class="overlay-title-gameover">GAME OVER</p>
         <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+        <button id="restart-btn" class="menu-btn menu-btn-primary">Reiniciar</button>
       </div>
+
+      <!-- Vista: MENÚ PAUSA principal -->
+      <div id="view-pause" class="overlay-box overlay-view hidden">
+        <p class="overlay-title-pause">PAUSA</p>
+
+        <button id="btn-resume" class="menu-btn menu-btn-primary">Reanudar</button>
+        <button id="btn-restart" class="menu-btn">Reiniciar</button>
+        <button id="btn-controls" class="menu-btn">Ver controles</button>
+
+        <div class="level-selector">
+          <span class="level-label">Nivel inicial</span>
+          <div class="level-control">
+            <button id="btn-level-dec" class="level-arrow" aria-label="Bajar nivel">&#9664;</button>
+            <span id="start-level-display" class="level-display">1</span>
+            <button id="btn-level-inc" class="level-arrow" aria-label="Subir nivel">&#9654;</button>
+          </div>
+          <p class="level-hint">Se aplica al reiniciar</p>
+        </div>
+      </div>
+
+      <!-- Vista: CONTROLES (sub-vista del menú pausa) -->
+      <div id="view-controls" class="overlay-box overlay-view hidden">
+        <p class="overlay-title-pause">CONTROLES</p>
+        <ul class="controls-list-overlay">
+          <li><kbd>←</kbd> <kbd>→</kbd> — Mover pieza</li>
+          <li><kbd>↑</kbd> / <kbd>X</kbd> — Rotar</li>
+          <li><kbd>↓</kbd> — Bajar suave (+1 pt)</li>
+          <li><kbd>Space</kbd> — Caída rápida (+2 pt/fila)</li>
+          <li><kbd>P</kbd> / <kbd>Esc</kbd> — Pausar / Reanudar</li>
+        </ul>
+        <button id="btn-controls-back" class="menu-btn menu-btn-primary">Volver</button>
+      </div>
+
     </div>
   </div>
 
