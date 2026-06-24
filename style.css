@@ -165,6 +165,39 @@ kbd {
   background: #9bbdff;
 }
 
+/* ---- Selector de skin ---- */
+.skin-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.skin-btn {
+  background: #22223a;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 11px;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 5px 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.skin-btn:hover {
+  background: #2e2e50;
+  border-color: #5a5a8a;
+  color: #ccc;
+}
+
+.skin-btn[data-active="true"] {
+  background: #7aa2f7;
+  border-color: #7aa2f7;
+  color: #0f0f17;
+}
+
 /* ---- Theme toggle switch ---- */
 .theme-toggle {
   display: flex;
@@ -278,4 +311,22 @@ body.light-mode #restart-btn {
 
 body.light-mode #restart-btn:hover {
   background: #6a8ff4;
+}
+
+body.light-mode .skin-btn {
+  background: #d8d8e8;
+  border-color: #b0b0c8;
+  color: #444;
+}
+
+body.light-mode .skin-btn:hover {
+  background: #c8c8dc;
+  border-color: #9090b8;
+  color: #222;
+}
+
+body.light-mode .skin-btn[data-active="true"] {
+  background: #4a6fd4;
+  border-color: #4a6fd4;
+  color: #f0f0f5;
 }

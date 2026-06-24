@@ -4,6 +4,8 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
+// Paleta canónica del juego. Es la fuente de verdad para la skin Retro.
+// COLORS[0] = null = celda vacía (no dibujar).
 const COLORS = [
   null,
   '#4dd0e1', // I - cyan
@@ -28,6 +30,229 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+// ---- Skins ----------------------------------------------------------------
+// Cada skin define: colors (array de 8, misma posición que COLORS) y
+// drawBlock(context, x, y, colorIndex, size, alpha) específica de la skin.
+// applySkin() puede añadir propiedades computadas a la skin (e.g. _patterns,
+// _hasRoundRect) para pre-calcular recursos costosos una sola vez.
+const SKINS = {
+  retro: {
+    name: 'Retro',
+    // Retro usa COLORS como fuente de verdad (misma referencia).
+    colors: COLORS,
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.shadowBlur = 0;
+      context.fillStyle = color;
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      // highlight superior estilo retro
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+      context.globalAlpha = 1;
+    },
+  },
+
+  neon: {
+    name: 'Neon',
+    colors: [
+      null,
+      '#00fff5', // I - cyan brillante
+      '#ffff00', // O - amarillo eléctrico
+      '#ee00ff', // T - magenta
+      '#00ff44', // S - verde neón
+      '#ff0040', // Z - rojo neón
+      '#00aaff', // J - azul eléctrico
+      '#ff8800', // L - naranja neón
+    ],
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      const a = alpha ?? 1;
+      context.globalAlpha = a;
+
+      // Primero dibujamos la base negra SIN glow (shadowBlur=0),
+      // para que el fondo oscuro no emita halo de color.
+      context.shadowBlur = 0;
+      context.fillStyle = '#000';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+
+      // Ahora activamos el glow solo para el relleno de color neón.
+      // shadowBlur se escala con alpha para que el fantasma brille menos.
+      context.shadowColor = color;
+      context.shadowBlur = 14 * a;
+      context.fillStyle = color;
+      context.globalAlpha = a * 0.85;
+      context.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
+
+      // El borde se dibuja sin glow para no triplicar el efecto.
+      context.shadowBlur = 0;
+      context.strokeStyle = color;
+      context.lineWidth = 1;
+      context.strokeRect(x * size + 1.5, y * size + 1.5, size - 3, size - 3);
+
+      context.globalAlpha = 1;
+    },
+  },
+
+  pastel: {
+    name: 'Pastel',
+    colors: [
+      null,
+      '#b2ebf2', // I - celeste suave
+      '#fff9c4', // O - amarillo pastel
+      '#e1bee7', // T - lila
+      '#c8e6c9', // S - verde menta
+      '#ffcdd2', // Z - rosa pastel
+      '#bbdefb', // J - azul bebé
+      '#ffe0b2', // L - melocotón
+    ],
+    // _hasRoundRect se calcula una vez en applySkin para no hacer el
+    // feature-detect en cada llamada a drawBlock (hasta 200 veces por frame).
+    _hasRoundRect: false,
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.shadowBlur = 0;
+      const r = Math.round(size * 0.22); // radio para esquinas redondeadas
+      const bx = x * size + 2;
+      const by = y * size + 2;
+      const bw = size - 4;
+      const bh = size - 4;
+      context.fillStyle = color;
+      if (this._hasRoundRect) {
+        context.beginPath();
+        context.roundRect(bx, by, bw, bh, r);
+        context.fill();
+        // highlight suave superior
+        context.fillStyle = 'rgba(255,255,255,0.35)';
+        context.beginPath();
+        context.roundRect(bx, by, bw, Math.round(bh * 0.35), r);
+        context.fill();
+      } else {
+        // fallback cuadrado si roundRect no está disponible
+        context.fillRect(bx, by, bw, bh);
+        context.fillStyle = 'rgba(255,255,255,0.35)';
+        context.fillRect(bx, by, bw, Math.round(bh * 0.35));
+      }
+      context.globalAlpha = 1;
+    },
+  },
+
+  pixel: {
+    name: 'Pixel',
+    colors: [
+      null,
+      '#5bc8d0', // I
+      '#d4a017', // O
+      '#8a44a0', // T
+      '#4a8c4e', // S
+      '#b04040', // Z
+      '#5578a8', // J
+      '#c07820', // L
+    ],
+    // _patterns[colorIndex] se construye una vez en applySkin con createPattern().
+    // Así evitamos 14 fillRect por bloque en el hot path del render.
+    _patterns: null,
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      context.globalAlpha = alpha ?? 1;
+      context.shadowBlur = 0;
+      const bx = x * size + 1;
+      const by = y * size + 1;
+      const bw = size - 2;
+      const bh = size - 2;
+
+      // Usamos el pattern pre-computado si está disponible (OffscreenCanvas o canvas auxiliar).
+      const pat = this._patterns && this._patterns[colorIndex];
+      if (pat) {
+        // Guardamos y restauramos la transformación para alinear el pattern al bloque.
+        context.save();
+        context.translate(bx, by);
+        context.fillStyle = pat;
+        context.fillRect(0, 0, bw, bh);
+        context.restore();
+      } else {
+        // Fallback: base sólida sin textura (navegadores muy antiguos)
+        context.fillStyle = this.colors[colorIndex];
+        context.fillRect(bx, by, bw, bh);
+      }
+
+      // Borde oscuro estilo pixel art (1 llamada, no loop)
+      context.strokeStyle = 'rgba(0,0,0,0.45)';
+      context.lineWidth = 1;
+      context.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+      context.globalAlpha = 1;
+    },
+  },
+};
+
+// Skin activa (se asigna en initSkin al cargar la página)
+let activeSkin = SKINS.retro;
+
+/**
+ * Construye los recursos pre-computados de una skin antes de usarla:
+ * - Pixel: crea un pattern de cuadrícula por color (una vez, no en cada frame).
+ * - Pastel: detecta si roundRect está disponible en el contexto canvas.
+ */
+function precomputeSkinResources(skin) {
+  // ---- Pixel: pattern de mini-cuadrícula ----
+  if (skin === SKINS.pixel) {
+    const gridSize = 4;
+    const bw = BLOCK - 2; // 28 px
+    const bh = BLOCK - 2;
+    const patterns = [null]; // índice 0 = vacío
+    for (let ci = 1; ci < skin.colors.length; ci++) {
+      const color = skin.colors[ci];
+      // Creamos un mini-canvas del tamaño del bloque con el patrón pintado.
+      const pc = document.createElement('canvas');
+      pc.width = bw;
+      pc.height = bh;
+      const pctx = pc.getContext('2d');
+      // Base de color sólido
+      pctx.fillStyle = color;
+      pctx.fillRect(0, 0, bw, bh);
+      // Líneas de cuadrícula oscuras (4×4 px)
+      pctx.fillStyle = 'rgba(0,0,0,0.18)';
+      for (let gx = 0; gx < bw; gx += gridSize) {
+        pctx.fillRect(gx, 0, 1, bh);
+      }
+      for (let gy = 0; gy < bh; gy += gridSize) {
+        pctx.fillRect(0, gy, bw, 1);
+      }
+      // Creamos el CanvasPattern para usarlo en drawBlock
+      patterns.push(ctx.createPattern(pc, 'no-repeat'));
+    }
+    skin._patterns = patterns;
+  }
+
+  // ---- Pastel: detectar roundRect una sola vez ----
+  if (skin === SKINS.pastel) {
+    skin._hasRoundRect = typeof ctx.roundRect === 'function';
+  }
+}
+
+/** Aplica la skin indicada, guarda preferencia en localStorage y redibuja. */
+function applySkin(name) {
+  if (!SKINS[name]) return;
+  activeSkin = SKINS[name];
+  // Pre-computar recursos de la skin (patterns, feature-flags)
+  precomputeSkinResources(activeSkin);
+  try { localStorage.setItem('tetris_skin', name); } catch (_) {}
+  // Marcar el botón activo usando data-attribute (no class dinámica)
+  document.querySelectorAll('.skin-btn').forEach(btn => {
+    btn.dataset.active = (btn.dataset.skin === name) ? 'true' : 'false';
+  });
+  // Redibujar inmediatamente si la partida ya está en marcha
+  if (board && current) {
+    draw();
+    drawNext();
+  }
+}
+
+// ---- Canvas & DOM ---------------------------------------------------------
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -40,6 +265,7 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
+// ---- Estado global --------------------------------------------------------
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
@@ -157,16 +383,10 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
+/** Dibuja un bloque delegando al skin activo. colorIndex 0 = celda vacía, no dibujar. */
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  activeSkin.drawBlock(context, x, y, colorIndex, size, alpha);
 }
 
 function drawGrid() {
@@ -190,19 +410,19 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
-  // board
+  // tablero
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
-  // ghost
+  // fantasma
   const gy = ghostY();
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       if (current.shape[r][c])
         drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
 
-  // current piece
+  // pieza activa
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
@@ -305,5 +525,18 @@ restartBtn.addEventListener('click', init);
 document.getElementById('theme-switch').addEventListener('change', function () {
   document.body.classList.toggle('light-mode', this.checked);
 });
+
+// ---- Inicializar skin desde localStorage ----------------------------------
+(function initSkin() {
+  let savedSkin = 'retro';
+  try { savedSkin = localStorage.getItem('tetris_skin') || 'retro'; } catch (_) {}
+  // Registrar eventos de los botones de skin
+  document.querySelectorAll('.skin-btn').forEach(btn => {
+    btn.addEventListener('click', () => applySkin(btn.dataset.skin));
+  });
+  // Aplicar skin guardada (o retro por defecto); los recursos se pre-computan
+  // después de que ctx esté disponible (lo está, se declaró arriba).
+  applySkin(SKINS[savedSkin] ? savedSkin : 'retro');
+})();
 
 init();
