@@ -27,7 +27,12 @@ const PIECES = [
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const TOP_COUNT = 5; // cuántas entradas guarda el ranking
+const LS_SCORES_KEY = 'tetris_scores';     // localStorage: array de {name, score}
+const LS_BEST_COMBO_KEY = 'tetris_best_combo'; // localStorage: número
+const LS_MAX_LINES_KEY = 'tetris_max_lines';   // localStorage: número
 
+// ---- Referencias DOM ----
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -35,12 +40,157 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
+const comboEl = document.getElementById('combo');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const nameEntry = document.getElementById('name-entry');
+const playerNameInput = document.getElementById('player-name');
+const saveScoreBtn = document.getElementById('save-score-btn');
+const gameoverScores = document.getElementById('gameover-scores');
+const gameoverTable = document.getElementById('gameover-table');
+const startOverlay = document.getElementById('start-overlay');
+const startTable = document.getElementById('start-table');
+const statBestCombo = document.getElementById('stat-best-combo');
+const statMaxLines = document.getElementById('stat-max-lines');
+const playBtn = document.getElementById('play-btn');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+// ---- Estado de juego ----
+let board, current, next, score, lines, level;
+let paused, gameOver;
+let lastTime, dropAccum, dropInterval, animId;
+// Combo: sube cada vez que una pieza limpia >=1 línea consecutivamente
+let combo, maxCombo;
+// Bandera: true desde la primera vez que el jugador pulsa "Jugar"
+let gameStarted = false;
+
+// ---- localStorage helpers ----
+
+/** Lee el array de records (hasta TOP_COUNT entradas). */
+function loadScores() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_SCORES_KEY)) || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+/** Guarda el array de records en localStorage. */
+function saveScores(arr) {
+  try {
+    localStorage.setItem(LS_SCORES_KEY, JSON.stringify(arr));
+  } catch (_) { /* cuota superada: ignorar */ }
+}
+
+/** Devuelve true si `pts` entra en el top (incluyendo empates con el último). */
+function isTopScore(pts) {
+  const scores = loadScores();
+  return scores.length < TOP_COUNT || pts >= scores[scores.length - 1].score;
+}
+
+/**
+ * Inserta {name, score} en el ranking, mantiene orden descendente
+ * y recorta a TOP_COUNT entradas. Devuelve el índice de la entrada nueva.
+ */
+function insertScore(name, pts) {
+  const normalized = name.trim() || 'Anónimo';
+  const scores = loadScores();
+  scores.push({ name: normalized, score: pts });
+  scores.sort((a, b) => b.score - a.score);
+  if (scores.length > TOP_COUNT) scores.length = TOP_COUNT;
+  saveScores(scores);
+  // Buscar la última posición con este nombre+puntuación para resaltar la recién insertada
+  let idx = -1;
+  for (let i = 0; i < scores.length; i++) {
+    if (scores[i].name === normalized && scores[i].score === pts) idx = i;
+  }
+  return idx;
+}
+
+/** Lee el mejor combo histórico. */
+function loadBestCombo() {
+  return parseInt(localStorage.getItem(LS_BEST_COMBO_KEY), 10) || 0;
+}
+
+/** Actualiza el mejor combo histórico si `val` lo supera. */
+function updateBestCombo(val) {
+  if (val > loadBestCombo()) {
+    try { localStorage.setItem(LS_BEST_COMBO_KEY, val); } catch (_) {}
+  }
+}
+
+/** Lee el máximo de líneas históricas. */
+function loadMaxLines() {
+  return parseInt(localStorage.getItem(LS_MAX_LINES_KEY), 10) || 0;
+}
+
+/** Actualiza el máximo de líneas si `val` lo supera. */
+function updateMaxLines(val) {
+  if (val > loadMaxLines()) {
+    try { localStorage.setItem(LS_MAX_LINES_KEY, val); } catch (_) {}
+  }
+}
+
+// ---- Renderizado de tablas de records ----
+
+/**
+ * Rellena una <table> con el ranking.
+ * @param {HTMLTableElement} tableEl  - elemento tabla destino
+ * @param {number|null} highlightIdx - índice de fila a resaltar (-1 o null = ninguna)
+ */
+function renderScoresTable(tableEl, highlightIdx) {
+  const scores = loadScores();
+  tableEl.innerHTML = '';
+
+  // Cabecera
+  const thead = tableEl.createTHead();
+  const headRow = thead.insertRow();
+  ['#', 'Nombre', 'Puntuación'].forEach(text => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headRow.appendChild(th);
+  });
+
+  // Filas
+  const tbody = tableEl.createTBody();
+  for (let i = 0; i < TOP_COUNT; i++) {
+    const tr = tbody.insertRow();
+    if (i < scores.length) {
+      tr.insertCell().textContent = i + 1;
+      tr.insertCell().textContent = scores[i].name;
+      tr.insertCell().textContent = scores[i].score.toLocaleString();
+      if (i === highlightIdx) tr.classList.add('highlight');
+    } else {
+      tr.insertCell().textContent = i + 1;
+      tr.insertCell().textContent = '-';
+      tr.insertCell().textContent = '-';
+      tr.classList.add('empty');
+    }
+  }
+}
+
+/** Muestra estadísticas históricas (mejor combo, máx. líneas) en la pantalla de inicio. */
+function renderGlobalStats() {
+  const bc = loadBestCombo();
+  const ml = loadMaxLines();
+  statBestCombo.textContent = bc > 0 ? bc : '-';
+  statMaxLines.textContent = ml > 0 ? ml : '-';
+}
+
+/** Resetea todos los records de localStorage y recarga las tablas. */
+function resetRecords() {
+  try {
+    localStorage.removeItem(LS_SCORES_KEY);
+    localStorage.removeItem(LS_BEST_COMBO_KEY);
+    localStorage.removeItem(LS_MAX_LINES_KEY);
+  } catch (_) {}
+  renderScoresTable(startTable, null);
+  renderGlobalStats();
+}
+
+// ---- Lógica de juego ----
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -93,6 +243,10 @@ function merge() {
         board[current.y + r][current.x + c] = current.shape[r][c];
 }
 
+/**
+ * Elimina las filas completas y actualiza score/lines/level.
+ * @returns {number} número de líneas eliminadas
+ */
 function clearLines() {
   let cleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
@@ -110,6 +264,7 @@ function clearLines() {
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -135,9 +290,20 @@ function softDrop() {
   }
 }
 
+/**
+ * Fija la pieza actual, actualiza el combo y pasa a la siguiente.
+ * clearLines() devuelve el número de líneas limpiadas; si > 0, el combo sube.
+ */
 function lockPiece() {
   merge();
-  clearLines();
+  const cleared = clearLines();
+  if (cleared > 0) {
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
+  } else {
+    combo = 0;
+  }
+  updateHUD();
   spawn();
 }
 
@@ -155,6 +321,7 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  comboEl.textContent = combo;
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -190,7 +357,7 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
-  // board
+  // tablero
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
@@ -202,7 +369,7 @@ function draw() {
       if (current.shape[r][c])
         drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
 
-  // current piece
+  // pieza activa
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
@@ -219,24 +386,64 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
+/**
+ * Muestra el overlay de game over.
+ * Si la puntuación entra en el top 5 → muestra campo de nombre.
+ * Siempre muestra la tabla de records.
+ */
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
+
+  // Persistir estadísticas históricas
+  updateBestCombo(maxCombo);
+  updateMaxLines(lines);
+
   overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  overlayScore.textContent = `Puntuación: ${score.toLocaleString()} | Combo máx: ${maxCombo}`;
+
+  if (isTopScore(score)) {
+    // Mostrar entrada de nombre; guardar score se hace al pulsar "Guardar"
+    scoreSaved = false; // reset para permitir un único guardado por partida
+    nameEntry.classList.remove('hidden');
+    gameoverScores.classList.add('hidden');
+    playerNameInput.value = '';
+    playerNameInput.focus();
+  } else {
+    // No entra al top: mostrar tabla directamente
+    nameEntry.classList.add('hidden');
+    renderScoresTable(gameoverTable, null);
+    gameoverScores.classList.remove('hidden');
+  }
+
   overlay.classList.remove('hidden');
+}
+
+/** Guarda el nombre + puntuación y muestra la tabla resaltando la fila nueva. */
+let scoreSaved = false; // guarda contra doble disparo (Enter + clic simultáneos)
+function saveScore() {
+  if (scoreSaved) return;
+  scoreSaved = true;
+  const name = playerNameInput.value.trim() || 'Anónimo';
+  const idx = insertScore(name, score);
+  nameEntry.classList.add('hidden');
+  renderScoresTable(gameoverTable, idx);
+  gameoverScores.classList.remove('hidden');
 }
 
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    overlay.classList.add('hidden');
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
+    nameEntry.classList.add('hidden');
+    gameoverScores.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
 }
@@ -257,11 +464,18 @@ function loop(ts) {
   if (!gameOver) animId = requestAnimationFrame(loop);
 }
 
+/**
+ * Inicializa el estado de juego y arranca el loop.
+ * Se llama desde playBtn (primera vez) y desde restartBtn (reinicio).
+ */
 function init() {
+  gameStarted = true;
   board = createBoard();
   score = 0;
   lines = 0;
   level = 1;
+  combo = 0;
+  maxCombo = 0;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
@@ -270,12 +484,38 @@ function init() {
   next = randomPiece();
   spawn();
   updateHUD();
+  // Ocultar ambos overlays
   overlay.classList.add('hidden');
+  startOverlay.classList.add('hidden');
+  nameEntry.classList.add('hidden');
+  gameoverScores.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
+// ---- Event listeners ----
+
+// Botón Jugar (pantalla de inicio)
+playBtn.addEventListener('click', init);
+
+// Botón Reiniciar (overlay game over / pausa)
+restartBtn.addEventListener('click', init);
+
+// Guardar nombre en game over
+saveScoreBtn.addEventListener('click', saveScore);
+
+// También guardar con Enter en el campo de nombre
+playerNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveScore();
+});
+
+// Resetear records
+resetRecordsBtn.addEventListener('click', resetRecords);
+
+// Controles de teclado
 document.addEventListener('keydown', e => {
+  // Ignorar todo antes de que el jugador haya pulsado "Jugar"
+  if (!gameStarted) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -300,10 +540,12 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
-
+// Toggle de tema (claro/oscuro)
 document.getElementById('theme-switch').addEventListener('change', function () {
   document.body.classList.toggle('light-mode', this.checked);
 });
 
-init();
+// ---- Arranque: mostrar pantalla de inicio ----
+// El juego NO auto-arranca; init() se llama cuando el usuario pulsa Jugar.
+renderScoresTable(startTable, null);
+renderGlobalStats();

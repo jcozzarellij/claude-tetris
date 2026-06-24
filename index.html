@@ -35,6 +35,10 @@
           <span class="label">LEVEL</span>
           <span class="value" id="level">1</span>
         </div>
+        <div class="panel-section">
+          <span class="label">COMBO</span>
+          <span class="value" id="combo">0</span>
+        </div>
 
         <div class="panel-section">
           <span class="label">NEXT</span>
@@ -54,11 +58,48 @@
       </aside>
     </div>
 
+    <!-- Overlay pausa / game over -->
     <div id="overlay" class="overlay hidden">
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+
+        <!-- Campo de nombre: visible cuando se entra al top 5 -->
+        <div id="name-entry" class="name-entry hidden">
+          <p class="name-entry-label">¡Entraste al top 5! Escribe tu nombre:</p>
+          <input type="text" id="player-name" maxlength="12" placeholder="Tu nombre" autocomplete="off" />
+          <button id="save-score-btn">Guardar</button>
+        </div>
+
+        <!-- Tabla de records en pantalla de game over -->
+        <div id="gameover-scores" class="scores-section hidden">
+          <p class="scores-title">MEJORES PUNTUACIONES</p>
+          <table id="gameover-table" class="scores-table"></table>
+        </div>
+
         <button id="restart-btn">Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- Pantalla de inicio: se muestra al cargar, antes de Jugar -->
+    <div id="start-overlay" class="overlay">
+      <div class="overlay-box start-box">
+        <p class="start-title">TETRIS</p>
+
+        <!-- Estadísticas históricas globales -->
+        <div class="global-stats">
+          <span>Mejor combo: <strong id="stat-best-combo">-</strong></span>
+          <span>Máx. líneas: <strong id="stat-max-lines">-</strong></span>
+        </div>
+
+        <!-- Tabla de records en pantalla de inicio -->
+        <p class="scores-title">MEJORES PUNTUACIONES</p>
+        <table id="start-table" class="scores-table"></table>
+
+        <div class="start-buttons">
+          <button id="play-btn">Jugar</button>
+          <button id="reset-records-btn" class="btn-secondary">Resetear records</button>
+        </div>
       </div>
     </div>
   </div>
