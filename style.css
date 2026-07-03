@@ -4,15 +4,84 @@
   padding: 0;
 }
 
+:root {
+  --bg-page: #0f0f17;
+  --fg-text: #e0e0e0;
+  --accent: #7aa2f7;
+  --board-bg: #1a1a25;
+  --board-border: #2a2a3a;
+  --panel-label: #555570;
+  --kbd-bg: #22223a;
+  --kbd-border: #3a3a5a;
+  --kbd-color: #aaa;
+  --btn-bg: #7aa2f7;
+  --btn-color: #0f0f17;
+  --btn-hover-bg: #9bbdff;
+  --controls-color: #888;
+  --title-glow: rgba(122, 162, 247, 0.4);
+}
+
+[data-theme="neon"] {
+  --bg-page: #000000;
+  --fg-text: #dffbff;
+  --accent: #00f0ff;
+  --board-bg: #000000;
+  --board-border: #00f0ff;
+  --panel-label: #ff2fd0;
+  --kbd-bg: #001414;
+  --kbd-border: #00f0ff;
+  --kbd-color: #6bfcff;
+  --btn-bg: #00f0ff;
+  --btn-color: #001414;
+  --btn-hover-bg: #6bfcff;
+  --controls-color: #6bd8e8;
+  --title-glow: rgba(0, 240, 255, 0.6);
+}
+
+[data-theme="pastel"] {
+  --bg-page: #f5f0f7;
+  --fg-text: #4a4458;
+  --accent: #b48ee0;
+  --board-bg: #fdfbff;
+  --board-border: #e3d5f0;
+  --panel-label: #a698c4;
+  --kbd-bg: #efe5f7;
+  --kbd-border: #d9c5ec;
+  --kbd-color: #6b6180;
+  --btn-bg: #b48ee0;
+  --btn-color: #ffffff;
+  --btn-hover-bg: #c7a8ec;
+  --controls-color: #8a80a0;
+  --title-glow: rgba(180, 142, 224, 0.35);
+}
+
+[data-theme="pixel"] {
+  --bg-page: #0f0f17;
+  --fg-text: #e0e0e0;
+  --accent: #7aff8f;
+  --board-bg: #1a1a25;
+  --board-border: #2a2a3a;
+  --panel-label: #555570;
+  --kbd-bg: #22223a;
+  --kbd-border: #3a3a5a;
+  --kbd-color: #aaa;
+  --btn-bg: #7aff8f;
+  --btn-color: #0f0f17;
+  --btn-hover-bg: #a0ffb0;
+  --controls-color: #888;
+  --title-glow: rgba(122, 255, 143, 0.4);
+}
+
 body {
-  background: #0f0f17;
-  color: #e0e0e0;
+  background: var(--bg-page);
+  color: var(--fg-text);
   font-family: system-ui, -apple-system, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   user-select: none;
+  transition: background 0.2s, color 0.2s;
 }
 
 .wrapper {
@@ -28,9 +97,10 @@ body {
   font-size: 36px;
   font-weight: 800;
   letter-spacing: 10px;
-  color: #7aa2f7;
+  color: var(--accent);
   text-align: center;
-  text-shadow: 0 0 20px rgba(122, 162, 247, 0.4);
+  text-shadow: 0 0 20px var(--title-glow);
+  transition: color 0.2s;
 }
 
 .game-container {
@@ -41,10 +111,11 @@ body {
 
 #board {
   display: block;
-  border: 1px solid #2a2a3a;
-  background: #1a1a25;
+  border: 1px solid var(--board-border);
+  background: var(--board-bg);
   border-radius: 4px;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  transition: background 0.2s, border-color 0.2s;
 }
 
 /* ---- Panel lateral ---- */
@@ -65,23 +136,39 @@ body {
 .label {
   font-size: 10px;
   letter-spacing: 2px;
-  color: #555570;
+  color: var(--panel-label);
   font-weight: 600;
+  transition: color 0.2s;
 }
 
 .value {
   font-family: 'Courier New', Courier, monospace;
   font-size: 26px;
   font-weight: 700;
-  color: #7aa2f7;
+  color: var(--accent);
   letter-spacing: 1px;
+  transition: color 0.2s;
 }
 
 #next-canvas {
   display: block;
-  border: 1px solid #2a2a3a;
-  background: #1a1a25;
+  border: 1px solid var(--board-border);
+  background: var(--board-bg);
   border-radius: 4px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+/* ---- Selector de skin ---- */
+.skin-select {
+  background: var(--kbd-bg);
+  color: var(--fg-text);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 /* ---- Controles ---- */
@@ -94,20 +181,22 @@ body {
 
 .controls li {
   font-size: 12px;
-  color: #888;
+  color: var(--controls-color);
   display: flex;
   align-items: center;
   gap: 4px;
+  transition: color 0.2s;
 }
 
 kbd {
-  background: #22223a;
-  border: 1px solid #3a3a5a;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
   border-radius: 3px;
   padding: 1px 6px;
   font-size: 11px;
   font-family: inherit;
-  color: #aaa;
+  color: var(--kbd-color);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 /* ---- Overlay ---- */
@@ -144,13 +233,13 @@ kbd {
 #overlay-score {
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
-  color: #7aa2f7;
+  color: var(--accent);
 }
 
 #restart-btn {
   margin-top: 8px;
-  background: #7aa2f7;
-  color: #0f0f17;
+  background: var(--btn-bg);
+  color: var(--btn-color);
   border: none;
   border-radius: 6px;
   padding: 10px 28px;
@@ -162,5 +251,5 @@ kbd {
 }
 
 #restart-btn:hover {
-  background: #9bbdff;
+  background: var(--btn-hover-bg);
 }
