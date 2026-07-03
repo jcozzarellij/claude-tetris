@@ -33,6 +33,15 @@ const STATS_KEY = 'tetris-stats';
 const LAST_NAME_KEY = 'tetris-last-name';
 const MAX_HIGHSCORES = 5;
 
+const SKIN_KEY = 'tetris-skin';
+const VALID_SKINS = ['retro', 'neon', 'pastel', 'pixel'];
+const GRID_COLORS = {
+  retro: '#22222e',
+  neon: '#0a2b30',
+  pastel: 'rgba(120, 100, 150, 0.15)',
+  pixel: '#22222e',
+};
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -45,6 +54,7 @@ const gameoverBox = document.getElementById('gameover-box');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const skinSelect = document.getElementById('skin-select');
 
 const startScreen = document.getElementById('start-screen');
 const startBtn = document.getElementById('start-btn');
@@ -73,6 +83,12 @@ const startLevelSelect = document.getElementById('start-level');
 
 let board, current, next, score, lines, level, combo, maxComboThisGame, paused, gameOver, started, lastTime, dropAccum, dropInterval, animId;
 let startLevel = 1;
+
+let skin = VALID_SKINS.includes(localStorage.getItem(SKIN_KEY))
+  ? localStorage.getItem(SKIN_KEY)
+  : 'retro';
+document.documentElement.dataset.theme = skin;
+skinSelect.value = skin;
 
 function loadHighScores() {
   try {
@@ -304,20 +320,55 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
+function lighten(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.round(((num >> 16) & 0xff) + (255 - ((num >> 16) & 0xff)) * amount);
+  const g = Math.round(((num >> 8) & 0xff) + (255 - ((num >> 8) & 0xff)) * amount);
+  const b = Math.round((num & 0xff) + (255 - (num & 0xff)) * amount);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  let color = COLORS[colorIndex];
+  if (skin === 'pastel') color = lighten(color, 0.35);
+
+  const px = x * size + 1;
+  const py = y * size + 1;
+  const s = size - 2;
+
   context.globalAlpha = alpha ?? 1;
+  context.shadowBlur = skin === 'neon' ? 12 : 0;
+  context.shadowColor = skin === 'neon' ? color : 'transparent';
   context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+
+  if (skin === 'pastel' && context.roundRect) {
+    context.beginPath();
+    context.roundRect(px, py, s, s, 6);
+    context.fill();
+  } else {
+    context.fillRect(px, py, s, s);
+  }
+
+  context.shadowBlur = 0;
+
+  if (skin === 'pixel') {
+    // sombreado 2 tonos: highlight arriba-izq, sombra abajo-der
+    const half = s / 2;
+    context.fillStyle = 'rgba(255,255,255,0.25)';
+    context.fillRect(px, py, half, half);
+    context.fillStyle = 'rgba(0,0,0,0.25)';
+    context.fillRect(px + half, py + half, half, half);
+  } else {
+    context.fillStyle = 'rgba(255,255,255,0.12)';
+    context.fillRect(px, py, s, 4);
+  }
+
   context.globalAlpha = 1;
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = GRID_COLORS[skin] || GRID_COLORS.retro;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -520,6 +571,19 @@ backBtn.addEventListener('click', showPauseMainView);
 startLevelSelect.addEventListener('change', e => {
   startLevel = parseInt(e.target.value, 10) || 1;
 });
+
+function applySkin(newSkin) {
+  if (!VALID_SKINS.includes(newSkin)) return;
+  skin = newSkin;
+  localStorage.setItem(SKIN_KEY, skin);
+  document.documentElement.dataset.theme = skin;
+  if (started) {
+    draw();
+    drawNext();
+  }
+}
+
+skinSelect.addEventListener('change', () => applySkin(skinSelect.value));
 
 function beginGame() {
   started = true;
