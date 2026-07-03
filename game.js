@@ -310,6 +310,7 @@ function spawn() {
   next = randomPiece();
   if (collide(current.shape, current.x, current.y)) {
     endGame();
+    return;
   }
   drawNext();
 }
@@ -369,6 +370,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 
 function drawGrid() {
   ctx.strokeStyle = GRID_COLORS[skin] || GRID_COLORS.retro;
+  ctx.strokeStyle = document.body.classList.contains('light-mode') ? '#c8c8d8' : '#22222e';
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -500,7 +502,7 @@ function loop(ts) {
     }
   }
   draw();
-  animId = requestAnimationFrame(loop);
+  if (!gameOver) animId = requestAnimationFrame(loop);
 }
 
 function init() {
@@ -596,3 +598,8 @@ startBtn.addEventListener('click', beginGame);
 started = false;
 refreshStartLeaderboard();
 refreshStatsDisplay();
+document.getElementById('theme-switch').addEventListener('change', function () {
+  document.body.classList.toggle('light-mode', this.checked);
+});
+
+init();
