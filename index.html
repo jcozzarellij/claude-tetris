@@ -37,6 +37,16 @@
         </div>
 
         <div class="panel-section">
+          <span class="label">SKIN</span>
+          <select id="skin-select" class="skin-select">
+            <option value="retro">Retro</option>
+            <option value="neon">Neon</option>
+            <option value="pastel">Pastel</option>
+            <option value="pixel">Pixel Art</option>
+          </select>
+        </div>
+
+        <div class="panel-section">
           <span class="label">NEXT</span>
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
@@ -48,17 +58,106 @@
             <li><kbd>↑</kbd> rotar</li>
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd> <kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
     </div>
 
     <div id="overlay" class="overlay hidden">
-      <div class="overlay-box">
+      <div class="overlay-box" id="gameover-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+
+        <div id="highscore-form" class="highscore-form hidden">
+          <p class="highscore-msg">¡Nueva puntuación en el TOP 5!</p>
+          <input id="player-name-input" type="text" maxlength="10" placeholder="Tu nombre" autocomplete="off" />
+          <button id="save-score-btn">Guardar</button>
+        </div>
+
+        <div id="gameover-leaderboard-panel" class="leaderboard-panel">
+          <p class="leaderboard-title">TOP 5</p>
+          <ol id="gameover-leaderboard-list" class="leaderboard-list"></ol>
+          <div class="stats-row">
+            <div class="stat">
+              <span class="label">MEJOR COMBO</span>
+              <span class="value" id="gameover-best-combo">0</span>
+            </div>
+            <div class="stat">
+              <span class="label">MÁS LÍNEAS</span>
+              <span class="value" id="gameover-max-lines">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay-actions">
+          <button id="restart-btn">Reiniciar</button>
+          <button id="reset-records-btn-gameover" class="secondary-btn">Resetear records</button>
+        </div>
+      </div>
+
+      <div class="overlay-box pause-box hidden" id="pause-box">
+        <p class="overlay-title-text">PAUSA</p>
+
+        <div class="pause-menu" id="pause-menu-main">
+          <button id="resume-btn">Reanudar</button>
+          <button id="pause-restart-btn">Reiniciar</button>
+          <button id="controls-btn" class="secondary">Ver controles</button>
+          <div class="level-select">
+            <label for="start-level">Nivel inicial</label>
+            <select id="start-level">
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pause-menu controls-view hidden" id="pause-controls-view">
+          <div class="controls">
+            <ul>
+              <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+              <li><kbd>↑</kbd> rotar</li>
+              <li><kbd>↓</kbd> bajar</li>
+              <li><kbd>Space</kbd> caída</li>
+              <li><kbd>P</kbd> <kbd>Esc</kbd> pausa</li>
+            </ul>
+          </div>
+          <button id="back-btn" class="secondary">Volver</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="start-screen" class="overlay">
+      <div class="overlay-box start-box">
+        <p class="start-heading">TETRIS</p>
+
+        <div class="leaderboard-panel">
+          <p class="leaderboard-title">TOP 5</p>
+          <ol id="start-leaderboard-list" class="leaderboard-list"></ol>
+          <div class="stats-row">
+            <div class="stat">
+              <span class="label">MEJOR COMBO</span>
+              <span class="value" id="start-best-combo">0</span>
+            </div>
+            <div class="stat">
+              <span class="label">MÁS LÍNEAS</span>
+              <span class="value" id="start-max-lines">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay-actions">
+          <button id="start-btn">Jugar</button>
+          <button id="reset-records-btn-start" class="secondary-btn">Resetear records</button>
+        </div>
       </div>
     </div>
   </div>
