@@ -41,6 +41,7 @@ const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
 const overlay = document.getElementById('overlay');
+const gameoverBox = document.getElementById('gameover-box');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
@@ -61,7 +62,17 @@ const gameoverBestComboEl = document.getElementById('gameover-best-combo');
 const gameoverMaxLinesEl = document.getElementById('gameover-max-lines');
 const resetRecordsBtnGameover = document.getElementById('reset-records-btn-gameover');
 
+const pauseBox = document.getElementById('pause-box');
+const pauseMainView = document.getElementById('pause-menu-main');
+const pauseControlsView = document.getElementById('pause-controls-view');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const controlsBtn = document.getElementById('controls-btn');
+const backBtn = document.getElementById('back-btn');
+const startLevelSelect = document.getElementById('start-level');
+
 let board, current, next, score, lines, level, combo, maxComboThisGame, paused, gameOver, started, lastTime, dropAccum, dropInterval, animId;
+let startLevel = 1;
 
 function loadHighScores() {
   try {
@@ -238,11 +249,15 @@ function clearLines() {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    dropInterval = dropIntervalForLevel(level);
     updateHUD();
   } else {
     combo = 0;
   }
+}
+
+function dropIntervalForLevel(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
 }
 
 function ghostY() {
@@ -354,6 +369,8 @@ function drawNext() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
+  pauseBox.classList.add('hidden');
+  gameoverBox.classList.remove('hidden');
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
 
@@ -370,20 +387,52 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
+function showPauseMainView() {
+  pauseControlsView.classList.add('hidden');
+  pauseMainView.classList.remove('hidden');
+}
+
+function showPauseControlsView() {
+  pauseMainView.classList.add('hidden');
+  pauseControlsView.classList.remove('hidden');
+}
+
+function openPauseMenu() {
+  paused = true;
+  cancelAnimationFrame(animId);
+  gameoverBox.classList.add('hidden');
+  showPauseMainView();
+  pauseBox.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+}
+
+function closePauseMenu() {
+  paused = false;
+  overlay.classList.add('hidden');
+  pauseBox.classList.add('hidden');
+  lastTime = performance.now();
+  animId = requestAnimationFrame(loop);
+}
+
 function togglePause() {
   if (!started || gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
+  if (paused) {
+    closePauseMenu();
   } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    highscoreForm.classList.add('hidden');
-    gameoverLeaderboardPanel.classList.add('hidden');
-    resetRecordsBtnGameover.classList.add('hidden');
-    overlay.classList.remove('hidden');
+    openPauseMenu();
+  }
+}
+
+function handleEscape() {
+  if (!started || gameOver) return;
+  if (!paused) {
+    openPauseMenu();
+    return;
+  }
+  if (!pauseControlsView.classList.contains('hidden')) {
+    showPauseMainView();
+  } else {
+    closePauseMenu();
   }
 }
 
@@ -407,12 +456,12 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
   combo = 0;
   maxComboThisGame = 0;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = dropIntervalForLevel(startLevel);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -426,6 +475,7 @@ function init() {
 document.addEventListener('keydown', e => {
   if (!started) return;
   if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'Escape') { handleEscape(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -462,6 +512,14 @@ playerNameInput.addEventListener('keydown', e => {
 
 resetRecordsBtnStart.addEventListener('click', resetRecords);
 resetRecordsBtnGameover.addEventListener('click', resetRecords);
+
+resumeBtn.addEventListener('click', closePauseMenu);
+pauseRestartBtn.addEventListener('click', init);
+controlsBtn.addEventListener('click', showPauseControlsView);
+backBtn.addEventListener('click', showPauseMainView);
+startLevelSelect.addEventListener('change', e => {
+  startLevel = parseInt(e.target.value, 10) || 1;
+});
 
 function beginGame() {
   started = true;
